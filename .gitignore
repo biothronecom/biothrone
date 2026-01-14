@@ -1,14 +1,35 @@
-# Add common sensitive files to the list
-.env
-.env.*.local
-node_modules/
-dist/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
 .DS_Store
+*.pem
 *.log
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-coverage/
-C:/Users/c/Desktop/ToDoWork/biothrone-app/docs/biothrone db neon.txt
-biothrone db neon.txt
+*.gs
+*.md
+docs/biothrone db neon.txt
+
+# Patches
+/patches

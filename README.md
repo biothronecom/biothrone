@@ -1,63 +1,81 @@
-# Barbershop Loyalty & Operations App
+# Bio-Throne™: Enhanced PWA for Sustainable E-commerce
 
-Modern React + TypeScript SPA for end-to-end barbershop ops: dashboard, walk-ins, appointments, clients, rewards, payments, notifications, and integrations (Google Sheets / Green API / Mercado Pago stubs).
+This repository contains the source code for the Bio-Throne™ progressive web application (PWA), an advanced e-commerce platform built with a focus on sustainability, performance, and a modern user experience.
 
-## Tech Stack & Structure
-- **React 18 + TypeScript** (currently a monolithic prototype in `barber_loyalty_system.tsx`).
-- **Styling:** Tailwind-style utility classes + CSS variables for light/dark.
-- **State:** Local state persisted to `localStorage` via a single writer (`saveData`/`persistData`) and versioned schema validation (Zod).
-- **Icons:** Lucide React.
-- **Assets:** `public/barbershop_icon.ico` (favicon) and `public/barbershop_logo.png` (logo/bookmark).
-- **Accessibility:** ARIA labels on inputs/buttons, readable status badges, keyboardable nav; minimized `alert` usage (replaced with toasts/notifications).
+The application is a fully functional online store that allows users to purchase eco-friendly toilet cleaning products, manage their cart, and complete transactions securely via PayPal. It features an administrative backend for order management and leverages AI for dynamic content generation and environmental impact analysis.
 
-## Key Features & Flows
-- **Navigation & RBAC:** Owner/Barber/Reception/Client with permission matrix (Owner-editable). Views hide when not permitted; notifications filtered per role.
-- **Dashboard:** KPIs for ventas/servicios/propinas/citas with date selector and scoped data (role/barber filters).
-- **Walk-in & Checkout:** Multi-step flow, QR/URL for Mercado Pago, creates a linked appointment + order, accrues stamps, receipts + tip prompts. Cancel disables checkout; simulate payment available for testing.
-- **Appointments:** Create/edit/cancel, conflict detection, status/payment badges, barber scoping, reminder stubs (24h/2h), client-side checkout. Client profile cards now have Reprogramar/Cancelar/Check-out actions wired.
-- **Clients:** Profile with phone/email sanitization, loyalty stats, history, rewards redemption, quick actions, Owner-only delete, notifications per role.
-- **Rewards:** CRUD with validation (name/type/stamp cost), tiers, status; toasts + notifications; persisted.
-- **Notifications:** Role-filtered list, badge counts, Owner can clear; blocking popups removed.
-- **Settings:** Business info, theme toggle, integrations config (Google Calendar, WhatsApp/Green API, SMS, Mercado Pago sandbox/webhook), reminder days, message templates, team management, permissions matrix, favicon/logo upload, public walk-in URL. Business name syncs the document title.
-- **Reports:** Date-range filters; KPIs for ingresos/servicios/propinas/loyalty and barber/service breakdown placeholders; honors paid orders and selected range.
-- **Estilos:** Hair/beard catalog pulling images from `public/img_styles/<id>.jpg` (hair lower-case ids, beard upper-case B-xx). Owner can swap via URL/file upload (persisted locally); fallback to logo.
+## Core Features
 
-## Data Model (summary)
-- `Customer`: id, phone, name, email, opt_in_status, stamps_balance, credit_balance, tier, created_at, last_visit.
-- `Appointment`: id, customer_phone/name, barber_id, chair_id, services[], scheduled_at, status, payment_status, source, notes.
-- `Order`: id, appointment_id, customer_id/name, barber_id, services[], subtotal/discount/credit_applied/total_due/total_paid, status, mp_order_ref/url, paid_at.
-- `Reward`: id, type (CREDIT/SERVICE), value_cop/service_code, stamp_cost, tier_restriction, active.
-- `Notification`: id, role scope, title/message, timestamps, read flag.
-- `Settings`: business info, theme, integrations (Google/WhatsApp/SMS/Mercado Pago sandbox/webhook), reminder days, message templates, permissions matrix, assets (favicon/logo/public link).
-- `Style`: hair/beard catalog entries with id/name/desc/tag/img/pair.
+- **PWA Capabilities**: The application is installable on users' devices and offers offline support via a service worker for enhanced reliability.
+- **Secure Shopping Cart**: Users can add products, view their cart, and proceed to a secure checkout. It supports individual product purchases, bundle deals with discounts, and subscription-based orders.
+- **PayPal Integration**: Securely processes both one-time payments and recurring subscriptions using the PayPal API.
+- **AI-Powered Carbon Footprint Tool**: An integrated AI tool estimates and visualizes the carbon footprint (CO2 emissions) and plastic waste of products, comparing them against industry averages.
+- **AI Product Importer**: A feature that allows an administrator to generate new products for the store—including descriptions, pricing, and images—simply by providing a list of product names.
+- **Admin Dashboard**: A comprehensive dashboard for administrators to view and manage customer orders, update order statuses (e.g., Pending, Processing, Shipped), and add tracking information.
+- **Google Sheets Backend**: A Google Apps Script acts as a lightweight backend, automatically logging all transaction and order details to a designated Google Sheet for easy tracking.
+- **Automated Email Notifications**: The backend script sends automated confirmation and shipping notification emails to customers upon status changes.
 
-## Important Logic
-- **Persistence:** `loadData`/`saveData` (localStorage) with schema version (`DATA_VERSION`) and Zod validation; `normalizeData` fills defaults; `redactSensitive` strips keys before persistence/sync.
-- **Sanitization:** `sanitizePhone`/`sanitizeEmail`; regex validation on profile save; consent flag on customers.
-- **Appointments & Orders:** Walk-in creates appointment + order; cancel sets statuses; checkout disabled when cancelled; client cards wired to reprogram/cancel/checkout; payment simulation marks order/appointment PAID/COMPLETED and logs loyalty ledger.
-- **Rewards:** `saveRewardsDirect` updates with validation; notifications/toasts emitted.
-- **Notifications:** `filteredNotifications` per role; mark-read on open; Owner can clear all.
-- **Theme:** CSS variables applied across nav/panels/forms; toggle persists in state.
-- **Error Boundary:** Friendly fallback screen and console logging.
+## Technology Stack
 
-## Running / Testing
-1. `npm install`
-2. Dev server: `npm run dev` (Vite on 5173)
-3. Build: `npm run build`
-4. Typecheck/Lint: `npm run typecheck` (alias `npm run lint`)
+This project is built with a modern, server-centric, and AI-first technology stack:
 
-## Security & Privacy (Prototype Caveats)
-- Data + PII stored client-side in `localStorage`; keys are redacted on persist but still in memory. For production: move to backend/Firebase, use env vars, JWT auth, encryption, consent/deletion endpoints.
-- Inputs are sanitized client-side; backend validation still required.
-- Integrations are stubs; no webhook validation or OAuth implemented.
+- **Framework**: [Next.js](https://nextjs.org/) (App Router)
+- **UI Library**: [React](https://react.dev/) with [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components**: [ShadCN UI](https://ui.shadcn.com/)
+- **AI Integration**: [Genkit](https://firebase.google.com/docs/genkit) for running generative AI flows.
+- **Payments**: [PayPal React SDK](https://www.npmjs.com/package/@paypal/react-paypal-js)
+- **Backend/Database**: [Google Apps Script](https://developers.google.com/apps-script) connected to a Google Sheet.
 
-## Extending / Next Steps
-- Swap localStorage for real persistence (Postgres/Firebase/API) and add auth/RBAC enforcement server-side.
-- Replace stubs with real Green API, Google Calendar OAuth, Mercado Pago webhooks.
-- Add tests (unit/integration), stricter TS config, and modularize (split monolith into components/hooks/services).
-- Add CI for `npm run typecheck` and optional linting.
+## Getting Started
 
-## Assets
-- `barbershop_icon.ico` – favicon
-- `barbershop_logo.png` – logo/bookmark image
-- `public/img_styles/*.jpg` – style catalog images (hc-xx / B-xx)
+### 1. Environment Configuration
+
+To run the application locally, you need to configure your environment variables. Copy the contents of `.env.example` into a new file named `.env` and fill in the required values.
+
+**File: `.env`**
+```
+# Google AI API Key (for Genkit)
+NEXT_PUBLIC_GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+
+# PayPal API Credentials
+NEXT_PUBLIC_PAYPAL_CLIENT_ID="YOUR_PAYPAL_CLIENT_ID"
+NEXT_PUBLIC_PAYPAL_PLAN_ID="YOUR_PAYPAL_SUBSCRIPTION_PLAN_ID" # Required for bundle subscriptions
+
+# Google Apps Script Web App URL
+# Deploy the code in `code.gs` as a web app to get this URL.
+NEXT_PUBLIC_APPS_SCRIPT_URL="YOUR_GOOGLE_APPS_SCRIPT_URL"
+
+# Private Secret (server-only)
+# Must match the SECRET_TOKEN set via the Apps Script `setup` function.
+SHEET_WEBHOOK_SECRET="YOUR_SUPER_SECRET_TOKEN"
+```
+
+### 2. Install Dependencies
+
+Install the project dependencies using npm:
+
+```bash
+npm install
+```
+
+### 3. Run the Development Server
+
+Start the Next.js development server:
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:9002`.
+
+## Project Structure
+
+- `src/app/`: Contains all pages and layouts for the application (using the Next.js App Router).
+- `src/app/admin/`: Admin-facing pages for order and asset management.
+- `src/components/`: Shared React components used across the application.
+- `src/lib/`: Core application logic, constants (products, pricing), and server actions.
+- `src/ai/`: Contains all Genkit AI flows for features like product generation and carbon footprint analysis.
+- `src/hooks/`: Custom React hooks.
+- `code.gs`: The Google Apps Script code to be deployed as the application's backend.
+- `public/`: Static assets, including the service worker and web manifest.

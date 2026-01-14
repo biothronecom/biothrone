@@ -1,145 +1,186 @@
-// Google Apps Script bridge for Sheets + GREEN-API
-// 1) Fill your GREEN-API credentials below.
-// 2) Create sheets named: Clients, Appointments, Loyalty, Notifications.
-// 3) Deploy as Web App (Anyone) for the webhook URL; add it in GREEN-API settings.
+/**
+ * @fileoverview Google Apps Script to handle incoming POST requests for logging
+ * Bio-Throne orders and subscriptions to separate Google Sheets.
+ *
+ * @version 2.0
+ * @author Firebase Studio
+ */
 
-const ID_INSTANCE = 'YOUR_ID_INSTANCE'; // TODO: move to PropertiesService / env vars
-const API_TOKEN = 'YOUR_API_TOKEN';     // TODO: move to PropertiesService / env vars
-const DATA_VERSION = 2;
+// =================================================================
+// SCRIPT CONFIGURATION
+// =================================================================
+// In this version, we use PropertiesService for configuration.
+// To set your configuration, run the `setup` function once from the
+// Apps Script editor, filling in your actual values below.
 
-const SHEETS = {
-  clients: 'Clients',
-  appointments: 'Appointments',
-  loyalty: 'Loyalty',
-  notifications: 'Notifications'
-};
-
-const getSheet = (name) => SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
-
-// === Green API helpers ===
-function sendWhatsApp(chatId, message) {
-  const url = `https://api.green-api.com/waInstance${ID_INSTANCE}/sendMessage/${API_TOKEN}`;
-  const payload = {
-    chatId: chatId.endsWith('@c.us') ? chatId : `${chatId}@c.us`,
-    message
+/**
+ * Run this function once to set up your script properties.
+ * 1. Fill in the values below.
+ * 2. In the Apps Script Editor, select "setup" from the function dropdown and click "Run".
+ * 3. You can then remove your sensitive IDs from the code.
+ */
+function setup() {
+  const properties = {
+    // IMPORTANT: Generate a strong, random secret token.
+    // This token must be included in the POST requests from your application for security.
+    'SECRET_TOKEN': 'YOUR_SUPER_SECRET_TOKEN',
+    'ORDER_SHEET_ID': 'YOUR_ORDER_SHEET_ID',
+    'SUBSCRIPTION_SHEET_ID': 'YOUR_SUBSCRIPTION_SHEET_ID'
   };
-  try {
-    const res = UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-    logNotification('outgoing', chatId, message, res.getResponseCode());
-    return res.getContentText();
-  } catch (err) {
-    logNotification('outgoing-error', chatId, String(err), 'ERR');
-    throw err;
-  }
+  PropertiesService.getScriptProperties().setProperties(properties);
+  Logger.log('✅ Script properties set successfully!');
 }
 
-function logNotification(direction, phone, message, status) {
-  const sheet = getSheet(SHEETS.notifications);
-  if (!sheet) return;
-  sheet.appendRow([new Date(), direction, phone, message, status]);
-}
 
-// === Appointment confirmation and reminders ===
-function confirmLatestPending(phone) {
-  const sheet = getSheet(SHEETS.appointments);
-  const rows = sheet.getDataRange().getValues();
-  for (let i = rows.length - 1; i > 0; i--) {
-    // Columns (example): A=Date, B=Time, C=Phone, D=Barber, E=?, F=Status
-    if (rows[i][2] === phone && rows[i][5] === 'Pending') {
-      sheet.getRange(i + 1, 6).setValue('Confirmed');
-      sendWhatsApp(phone, 'Gracias! Tu cita ha sido confirmada. 💈');
-      return true;
-    }
-  }
-  return false;
-}
+// =================================================================
+// MAIN WEB APP ENTRY POINT
+// =================================================================
 
-// Time-driven trigger, hourly
-function sendReminders() {
-  const sheet = getSheet(SHEETS.appointments);
-  const now = new Date();
-  const rows = sheet.getDataRange().getValues();
-  rows.forEach((row, idx) => {
-    if (idx === 0) return;
-    const [date, time, phone,, status] = row;
-    if (status !== 'Confirmed') return;
-    const apptDate = new Date(`${Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd')}T${time}`);
-    const diffH = (apptDate.getTime() - now.getTime()) / 1000 / 3600;
-    if (diffH > 23 && diffH < 25) {
-      sendWhatsApp(phone, `Recordatorio: tu cita es mañana a las ${time}.`);
-    } else if (diffH > 1.5 && diffH < 2.5) {
-      sendWhatsApp(phone, `Cita en 2h (${time}). ¡Te esperamos!`);
-    }
-  });
-}
-
-// === Loyalty hooks ===
-function awardPoints(phone, points) {
-  const sheet = getSheet(SHEETS.clients);
-  const values = sheet.getDataRange().getValues();
-  for (let i = 1; i < values.length; i++) {
-    if (values[i][0] === phone) {
-      const current = Number(values[i][2] || 0);
-      sheet.getRange(i + 1, 3).setValue(current + points);
-      getSheet(SHEETS.loyalty)?.appendRow([new Date(), phone, points, 'earn']);
-      return current + points;
-    }
-  }
-  return null;
-}
-
-function logIncomingMessage(phone, text) {
-  getSheet(SHEETS.notifications)?.appendRow([new Date(), 'incoming', phone, text, 'OK']);
-}
-
-// === Webhook entrypoint ===
+/**
+ * Handles HTTP POST requests. This is the main entry point for the web app.
+ * It validates the request and routes it to the appropriate handler.
+ * @param {object} e The event parameter for a POST request.
+ * @returns {ContentService.TextOutput} A JSON response indicating success or failure.
+ */
 function doPost(e) {
-  const data = JSON.parse(e.postData.contents);
-  if (data.snapshot) {
-    if (data.snapshot.version && data.snapshot.version !== DATA_VERSION) {
-      return ContentService.createTextOutput('VERSION_MISMATCH');
-    }
-    PropertiesService.getScriptProperties().setProperty('SNAPSHOT', JSON.stringify(data.snapshot));
-    return ContentService.createTextOutput('OK');
-  }
-  if (data.typeWebhook === 'incomingMessageReceived') {
-    const phone = data.senderData?.sender;
-    const text = (data.messageData?.textMessageData?.textMessage || '').toLowerCase();
-    logIncomingMessage(phone, text);
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const SECRET_TOKEN = scriptProperties.getProperty('SECRET_TOKEN');
 
-    if (text === '1' || text === 'confirm') {
-      const confirmed = confirmLatestPending(phone);
-      if (!confirmed) {
-        sendWhatsApp(phone, 'No encontramos citas pendientes. Escribe "cita" para agendar.');
-      }
-    } else if (text === 'points' || text === 'puntos') {
-      const clientSheet = getSheet(SHEETS.clients);
-      const values = clientSheet.getDataRange().getValues();
-      const row = values.find(r => r[0] === phone);
-      const pts = row ? row[2] : 0;
-      sendWhatsApp(phone, `Tienes ${pts} puntos acumulados.`);
+  // Use a lock to prevent concurrent execution issues
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000); // Wait up to 30 seconds for the lock
+
+  let response;
+  try {
+    const payload = JSON.parse(e.postData.contents);
+
+    // Security check: Validate the secret token
+    if (!payload.secret || payload.secret !== SECRET_TOKEN) {
+      throw new Error('Invalid or missing secret token.');
     }
+
+    // Route based on the data type
+    if (payload.type === 'order') {
+      response = handleOrder(payload.data);
+    } else if (payload.type === 'subscription') {
+      response = handleSubscription(payload.data);
+    } else {
+      throw new Error('Invalid data type specified.');
+    }
+  } catch (error) {
+    Logger.log(`Error: ${error.message}\nStack: ${error.stack}`);
+    response = createJsonResponse({
+      'status': 'error',
+      'message': `Failed to process request. Reason: ${error.message}`
+    });
+  } finally {
+    lock.releaseLock();
   }
-  return ContentService.createTextOutput('OK');
+
+  return response;
 }
 
-// Allow reading the latest synced snapshot (used by the React app)
-function doGet() {
-  const snap = PropertiesService.getScriptProperties().getProperty('SNAPSHOT');
-  if (!snap) return ContentService.createTextOutput(JSON.stringify({})).setMimeType(ContentService.MimeType.JSON);
-  return ContentService.createTextOutput(JSON.stringify({ snapshot: JSON.parse(snap) })).setMimeType(ContentService.MimeType.JSON);
+
+// =================================================================
+// DATA HANDLERS
+// =================================================================
+
+/**
+ * Handles new one-time order data.
+ * @param {object} data The order data from the payload.
+ * @returns {ContentService.TextOutput} A JSON response.
+ */
+function handleOrder(data) {
+  const ORDER_SHEET_ID = PropertiesService.getScriptProperties().getProperty('ORDER_SHEET_ID');
+  if (!ORDER_SHEET_ID) throw new Error('Order Sheet ID is not configured.');
+
+  const sheet = SpreadsheetApp.openById(ORDER_SHEET_ID).getSheets()[0];
+  const headers = [
+    'Order ID', 'Order Date', 'Customer Name', 'Customer Email', 'Shipping Address',
+    'Subtotal', 'Discount', 'Shipping', 'Total', 'Item Count', 'Product IDs', 'Is Bundle'
+  ];
+  
+  ensureHeaders(sheet, headers);
+
+  const shippingAddress = `${data.shipping.address1}, ${data.shipping.address2 || ''}, ${data.shipping.city}, ${data.shipping.state} ${data.shipping.zip}, ${data.shipping.country}`;
+  const itemSummary = data.items.map(item => `${item.name} (Qty: ${item.quantity})`).join('; ');
+
+  const newRow = [
+    data.orderId,
+    new Date(),
+    data.shipping.fullName,
+    data.shipping.email,
+    shippingAddress,
+    data.pricing.subtotal,
+    data.pricing.savings,
+    data.pricing.shippingCost,
+    data.pricing.total,
+    data.pricing.itemCount,
+    data.pricing.productIds.join(', '),
+    data.pricing.hasBundle
+  ];
+
+  sheet.appendRow(newRow);
+  return createJsonResponse({ 'status': 'success', 'message': 'Order logged successfully.' });
 }
 
-// === Manual helper: send message from sheet selection ===
-function sendFromSheet() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const phone = sheet.getRange('A2').getValue();
-  const message = sheet.getRange('B2').getValue();
-  sendWhatsApp(phone, message);
-  sheet.getRange('C2').setValue(`Sent ${new Date()}`);
+/**
+ * Handles new subscription data.
+ * @param {object} data The subscription data from the payload.
+ * @returns {ContentService.TextOutput} A JSON response.
+ */
+function handleSubscription(data) {
+  const SUBSCRIPTION_SHEET_ID = PropertiesService.getScriptProperties().getProperty('SUBSCRIPTION_SHEET_ID');
+   if (!SUBSCRIPTION_SHEET_ID) throw new Error('Subscription Sheet ID is not configured.');
+
+  const sheet = SpreadsheetApp.openById(SUBSCRIPTION_SHEET_ID).getSheets()[0];
+  const headers = [
+    'Subscription ID', 'PayPal Plan ID', 'Start Date', 'Customer Name',
+    'Customer Email', 'Shipping Address'
+  ];
+
+  ensureHeaders(sheet, headers);
+
+  const shippingAddress = `${data.shipping.address1}, ${data.shipping.address2 || ''}, ${data.shipping.city}, ${data.shipping.state} ${data.shipping.zip}, ${data.shipping.country}`;
+
+  const newRow = [
+    data.subscriptionId,
+    data.planId,
+    new Date(),
+    data.shipping.fullName,
+    data.shipping.email,
+    shippingAddress,
+  ];
+
+  sheet.appendRow(newRow);
+  return createJsonResponse({ 'status': 'success', 'message': 'Subscription logged successfully.' });
+}
+
+
+// =================================================================
+// HELPER FUNCTIONS
+// =================================================================
+
+/**
+ * Creates a JSON response object for the web app.
+ * @param {object} obj The JavaScript object to stringify.
+ * @returns {ContentService.TextOutput} The response object.
+ */
+function createJsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Ensures that the first row of a sheet contains the specified headers.
+ * If the sheet is empty, it appends the headers.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet The sheet to check.
+ * @param {string[]} headers An array of header strings.
+ */
+function ensureHeaders(sheet, headers) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
 }
