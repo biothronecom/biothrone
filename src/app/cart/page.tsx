@@ -39,6 +39,7 @@ export default function CartPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [shippingData, setShippingData] = useState<ShippingFormData | null>(null);
 
   useEffect(() => {
@@ -294,10 +295,31 @@ return (
         <GamificationPanel />
 
         <Card className="sticky top-24" aria-labelledby="order-summary-heading">
-          <CardHeader>
-            <CardTitle as="h2" id="order-summary-heading" className="text-3xl">Order Summary</CardTitle>
+          <CardHeader className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle as="h2" id="order-summary-heading" className="text-3xl">Order Summary</CardTitle>
+              <button
+                type="button"
+                onClick={() => setIsSummaryOpen((open) => !open)}
+                className="inline-flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
+                aria-expanded={isSummaryOpen}
+                aria-controls="order-summary-body"
+              >
+                <span>{isSummaryOpen ? "Hide" : "Show"} Cart</span>
+                <span aria-hidden="true">{isSummaryOpen ? "−" : "+"}</span>
+              </button>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-4 py-3 lg:hidden">
+              <span className="text-sm font-semibold text-muted-foreground">Order Total</span>
+              <span className="text-lg font-bold">${total.toFixed(2)}</span>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4" aria-live="polite" aria-busy={isPending}>
+          <CardContent
+            id="order-summary-body"
+            className={`space-y-4 ${isSummaryOpen ? "" : "hidden"} lg:block`}
+            aria-live="polite"
+            aria-busy={isPending}
+          >
             <ClientOnly fallback={<Skeleton className="h-24 w-full" />}>
               {state.items.length > 0 ? (
                 <ul className="space-y-4" aria-label="Items in your cart">
