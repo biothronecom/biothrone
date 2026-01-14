@@ -87,6 +87,7 @@ export default function CartPage() {
     // If user has individual items, they get Tier Discount.
 
     const shippingCost = regularItems.length > 0 && !hasBundle ? pricing.shippingCost : 0;
+    const showBundleUpsell = !hasBundle && hasIndividualProducts;
 
     // Final Total
     const total = calculatedSubtotal - tierDiscountAmount + shippingCost;
@@ -97,7 +98,7 @@ export default function CartPage() {
       savings: tierDiscountAmount,
       shippingCost,
       total,
-      showBundleUpsell: Boolean(showBundleUpsell),
+      showBundleUpsell,
       donationAmount
     };
   }, [state.items, state.discountAmount]);
