@@ -137,9 +137,14 @@ export default function CartPage() {
           zip: shippingData.zip,
           country: shippingData.country,
         },
-      },
-        items: state.items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
-          discount: savings
+        items: state.items.map(i => ({
+          id: i.id,
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+        })),
+        discount: savings,
+      };
     };
 
     const result = await createOrderInSheet(newOrder);
@@ -495,5 +500,4 @@ return (
   </div>
 );
 }
-
 
