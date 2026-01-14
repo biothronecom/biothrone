@@ -145,7 +145,6 @@ export default function CartPage() {
         })),
         discount: savings,
       };
-    };
 
     const result = await createOrderInSheet(newOrder);
 
@@ -500,4 +499,3 @@ return (
   </div>
 );
 }
-
