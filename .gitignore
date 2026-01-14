@@ -29,7 +29,6 @@ yarn-debug.log*
 yarn-error.log*
 *.gs
 *.md
-docs/biothrone db neon.txt
 
 # Patches
 /patches

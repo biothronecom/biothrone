@@ -1,0 +1,25 @@
+biothrone db neon :
+
+Connect to your database
+
+Branch
+main
+Default
+Compute
+Primary
+Active
+Database
+neondb
+Role
+Reset password
+neondb_owner
+psql
+
+
+connection string
+
+psql 'postgresql://neondb_owner:npg_5Hyfp2ObDguk@ep-weathered-heart-ahpv618s-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+
+psql 'postgresql://neondb_owner:npg_5Hyfp2ObDguk@ep-weathered-heart-ahpv618s-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+
+passwordless auth psql -h pg.neon.tech

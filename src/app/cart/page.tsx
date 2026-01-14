@@ -39,7 +39,6 @@ export default function CartPage() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [isCaptchaVerified, setIsCaptchaVerified] = useState(false);
-  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [shippingData, setShippingData] = useState<ShippingFormData | null>(null);
 
   useEffect(() => {
@@ -88,7 +87,6 @@ export default function CartPage() {
     // If user has individual items, they get Tier Discount.
 
     const shippingCost = regularItems.length > 0 && !hasBundle ? pricing.shippingCost : 0;
-    const showBundleUpsell = !hasBundle && hasIndividualProducts;
 
     // Final Total
     const total = calculatedSubtotal - tierDiscountAmount + shippingCost;
@@ -99,7 +97,7 @@ export default function CartPage() {
       savings: tierDiscountAmount,
       shippingCost,
       total,
-      showBundleUpsell,
+      showBundleUpsell: Boolean(showBundleUpsell),
       donationAmount
     };
   }, [state.items, state.discountAmount]);
@@ -139,14 +137,10 @@ export default function CartPage() {
           zip: shippingData.zip,
           country: shippingData.country,
         },
-        items: state.items.map(i => ({
-          id: i.id,
-          name: i.name,
-          quantity: i.quantity,
-          price: i.price,
-        })),
-        discount: savings,
-      };
+      },
+        items: state.items.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+          discount: savings
+    };
 
     const result = await createOrderInSheet(newOrder);
 
@@ -295,31 +289,10 @@ return (
         <GamificationPanel />
 
         <Card className="sticky top-24" aria-labelledby="order-summary-heading">
-          <CardHeader className="space-y-3">
-            <div className="flex items-center justify-between gap-4">
-              <CardTitle as="h2" id="order-summary-heading" className="text-3xl">Order Summary</CardTitle>
-              <button
-                type="button"
-                onClick={() => setIsSummaryOpen((open) => !open)}
-                className="inline-flex items-center gap-2 text-sm font-bold text-primary lg:hidden"
-                aria-expanded={isSummaryOpen}
-                aria-controls="order-summary-body"
-              >
-                <span>{isSummaryOpen ? "Hide" : "Show"} Cart</span>
-                <span aria-hidden="true">{isSummaryOpen ? "−" : "+"}</span>
-              </button>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-4 py-3 lg:hidden">
-              <span className="text-sm font-semibold text-muted-foreground">Order Total</span>
-              <span className="text-lg font-bold">${total.toFixed(2)}</span>
-            </div>
+          <CardHeader>
+            <CardTitle as="h2" id="order-summary-heading" className="text-3xl">Order Summary</CardTitle>
           </CardHeader>
-          <CardContent
-            id="order-summary-body"
-            className={`space-y-4 ${isSummaryOpen ? "" : "hidden"} lg:block`}
-            aria-live="polite"
-            aria-busy={isPending}
-          >
+          <CardContent className="space-y-4" aria-live="polite" aria-busy={isPending}>
             <ClientOnly fallback={<Skeleton className="h-24 w-full" />}>
               {state.items.length > 0 ? (
                 <ul className="space-y-4" aria-label="Items in your cart">
@@ -522,3 +495,5 @@ return (
   </div>
 );
 }
+
+
